@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  linux:
+    name: Linux · Swift 6.0
+    runs-on: ubuntu-latest
+    container: swift:6.0
+    steps:
+      - uses: actions/checkout@v4
+
+      # A `swift build` on an up-to-date tree compiles nothing and still prints
+      # "Build complete!", so the zero-warning claim in the README is only worth
+      # anything if the build starts from scratch.
+      - name: Clean
+        run: rm -rf .build
+
+      - name: Build (warnings are errors)
+        run: swift build -Xswiftc -warnings-as-errors
+
+      - name: Test
+        run: swift test
+
+  macos:
+    name: macOS · swift test
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Clean
+        run: rm -rf .build
+
+      # This job is what makes the `.macOS(.v14)` platform declaration in Package.swift
+      # a verified claim rather than an assertion, and it is the only place the SwiftUI
+      # console is compiled at all — the Linux job skips it via `#if canImport(SwiftUI)`.
+      - name: Build (warnings are errors)
+        run: swift build -Xswiftc -warnings-as-errors
+
+      - name: Test
+        run: swift test
